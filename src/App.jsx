@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
@@ -21,8 +22,16 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+          <Route
+    path="/analytics"
+    element={
+      <ProtectedRoute>
+        <Analytics />
+      </ProtectedRoute>
+    }
+  />
+  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+</Routes>
       </AuthProvider>
     </BrowserRouter>
   );

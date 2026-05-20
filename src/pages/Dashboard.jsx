@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [view, setView] = useState('list');
+
   const filtered = useMemo(() => {
     return applications.filter((app) => {
       const matchesSearch =
@@ -36,15 +38,27 @@ export default function Dashboard() {
     });
   }, [applications, search, statusFilter]);
 
-  const stats = useMemo(() => ({
-    total: applications.length,
-    interviews: applications.filter((a) => a.status === 'INTERVIEW').length,
-    offers: applications.filter((a) => ['OFFER', 'ACCEPTED'].includes(a.status)).length,
-    active: applications.filter((a) => !['REJECTED', 'GHOSTED', 'DECLINED'].includes(a.status)).length,
-  }), [applications]);
+  const stats = useMemo(
+    () => ({
+      total: applications.length,
+      interviews: applications.filter((a) => a.status === 'INTERVIEW').length,
+      offers: applications.filter((a) => ['OFFER', 'ACCEPTED'].includes(a.status)).length,
+      active: applications.filter(
+        (a) => !['REJECTED', 'GHOSTED', 'DECLINED'].includes(a.status)
+      ).length,
+    }),
+    [applications]
+  );
 
-  const openCreate = () => { setEditing(null); setModalOpen(true); };
-  const openEdit = (app) => { setEditing(app); setModalOpen(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (app) => {
+    setEditing(app);
+    setModalOpen(true);
+  };
 
   const handleSubmit = async (formData) => {
     if (editing) {
@@ -60,29 +74,47 @@ export default function Dashboard() {
       deleteMutation.mutate(app.id);
     }
   };
+
   const handleStatusUpdate = async (application, newStatus) => {
-  await updateMutation.mutateAsync({
-    id: application.id,
-    data: {
-      company: application.company,
-      role: application.role,
-      location: application.location,
-      jobUrl: application.jobUrl,
-      notes: application.notes,
-      appliedDate: application.appliedDate,
-      status: newStatus,
-    },
-  });
-};
+    await updateMutation.mutateAsync({
+      id: application.id,
+      data: {
+        company: application.company,
+        role: application.role,
+        location: application.location,
+        jobUrl: application.jobUrl,
+        notes: application.notes,
+        appliedDate: application.appliedDate,
+        status: newStatus,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-900">Job Tracker</h1>
+          <div className="flex items-center gap-6">
+            <h1 className="text-xl font-bold text-slate-900">Job Tracker</h1>
+            <div className="flex items-center gap-1">
+              <Link
+                to="/dashboard"
+                className="px-3 py-1.5 rounded-md text-sm font-medium bg-slate-100 text-slate-900"
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/analytics"
+                className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Analytics
+              </Link>
+            </div>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-600">
-              Hi, <span className="font-medium text-slate-900">{user?.fullName}</span>
+              Hi,{' '}
+              <span className="font-medium text-slate-900">{user?.fullName}</span>
             </span>
             <button
               onClick={logout}
@@ -103,32 +135,37 @@ export default function Dashboard() {
           <StatCard label="Offers" value={stats.offers} color="bg-emerald-500" />
         </div>
 
+        {/* Header + ViewToggle + Add button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-  <h2 className="text-2xl font-bold text-slate-900">Applications</h2>
-  <div className="flex items-center gap-3">
-    <ViewToggle view={view} setView={setView} />
-    <button
-      onClick={openCreate}
-      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
-    >
-      <Plus size={18} /> New Application
-    </button>
-  </div>
-</div>
+          <h2 className="text-2xl font-bold text-slate-900">Applications</h2>
+          <div className="flex items-center gap-3">
+            <ViewToggle view={view} setView={setView} />
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+            >
+              <Plus size={18} /> New Application
+            </button>
+          </div>
+        </div>
 
-        {/* Filters */}
         {view === 'list' && (
-  <ApplicationFilters
-    search={search}
-    setSearch={setSearch}
-    statusFilter={statusFilter}
-    setStatusFilter={setStatusFilter}
-  />
-)}
+          <ApplicationFilters
+            search={search}
+            setSearch={setSearch}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+          />
+        )}
 
-        {/* Body */}
-        {isLoading && <p className="text-center text-slate-500 py-12">Loading...</p>}
-        {error && <p className="text-center text-red-600 py-12">Failed to load applications.</p>}
+        {isLoading && (
+          <p className="text-center text-slate-500 py-12">Loading...</p>
+        )}
+        {error && (
+          <p className="text-center text-red-600 py-12">
+            Failed to load applications.
+          </p>
+        )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
@@ -140,25 +177,29 @@ export default function Dashboard() {
           </div>
         )}
 
-        {view === 'list' ? (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {filtered.map((app) => (
-      <ApplicationCard
-        key={app.id}
-        application={app}
-        onEdit={openEdit}
-        onDelete={handleDelete}
-      />
-    ))}
-  </div>
-) : (
-  <KanbanBoard
-    applications={filtered}
-    onUpdateStatus={handleStatusUpdate}
-    onEdit={openEdit}
-    onDelete={handleDelete}
-  />
-)}
+        {!isLoading && filtered.length > 0 && (
+          <>
+            {view === 'list' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((app) => (
+                  <ApplicationCard
+                    key={app.id}
+                    application={app}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            ) : (
+              <KanbanBoard
+                applications={filtered}
+                onUpdateStatus={handleStatusUpdate}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+              />
+            )}
+          </>
+        )}
       </main>
 
       <ApplicationFormModal
