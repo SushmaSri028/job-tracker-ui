@@ -14,6 +14,7 @@ import {
   getOfferRate,
   getAvgDaysApplied,
 } from '../utils/analytics';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Analytics() {
   const { user, logout } = useAuth();
@@ -50,16 +51,18 @@ export default function Analytics() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">
-              Hi, <span className="font-medium text-slate-900">{user?.fullName}</span>
-            </span>
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
-            >
-              <LogOut size={16} /> Log out
-            </button>
-          </div>
+  <ThemeToggle />
+  <span className="text-sm text-slate-600 dark:text-slate-300">
+    Hi,{' '}
+    <span className="font-medium text-slate-900 dark:text-slate-100">{user?.fullName}</span>
+  </span>
+  <button
+    onClick={logout}
+    className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+  >
+    <LogOut size={16} /> Log out
+  </button>
+</div>
         </div>
       </nav>
 

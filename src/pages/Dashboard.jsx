@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus, LogOut, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   useApplications,
@@ -13,6 +13,10 @@ import ApplicationFormModal from '../components/ApplicationFormModal';
 import ApplicationFilters from '../components/ApplicationFilters';
 import KanbanBoard from '../components/KanbanBoard';
 import ViewToggle from '../components/ViewToggle';
+import ThemeToggle from '../components/ThemeToggle';
+import StaleAlert from '../components/StaleAlert';
+import { exportApplicationsToCSV } from '../utils/csvExport';
+import { getStaleApplications } from '../utils/analytics';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -26,6 +30,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [view, setView] = useState('list');
+  const [staleAlertDismissed, setStaleAlertDismissed] = useState(false);
 
   const filtered = useMemo(() => {
     return applications.filter((app) => {
@@ -47,6 +52,11 @@ export default function Dashboard() {
         (a) => !['REJECTED', 'GHOSTED', 'DECLINED'].includes(a.status)
       ).length,
     }),
+    [applications]
+  );
+
+  const staleApplications = useMemo(
+    () => getStaleApplications(applications),
     [applications]
   );
 
@@ -91,34 +101,37 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-slate-900">Job Tracker</h1>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Job Tracker</h1>
             <div className="flex items-center gap-1">
               <Link
                 to="/dashboard"
-                className="px-3 py-1.5 rounded-md text-sm font-medium bg-slate-100 text-slate-900"
+                className="px-3 py-1.5 rounded-md text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 Dashboard
               </Link>
               <Link
                 to="/analytics"
-                className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100"
+                className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Analytics
               </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">
+            <ThemeToggle />
+            <span className="text-sm text-slate-600 dark:text-slate-300">
               Hi,{' '}
-              <span className="font-medium text-slate-900">{user?.fullName}</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {user?.fullName}
+              </span>
             </span>
             <button
               onClick={logout}
-              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
+              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             >
               <LogOut size={16} /> Log out
             </button>
@@ -127,7 +140,13 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats row */}
+        {!staleAlertDismissed && (
+          <StaleAlert
+            staleApplications={staleApplications}
+            onDismiss={() => setStaleAlertDismissed(true)}
+          />
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <StatCard label="Total" value={stats.total} color="bg-blue-500" />
           <StatCard label="Active" value={stats.active} color="bg-purple-500" />
@@ -135,11 +154,17 @@ export default function Dashboard() {
           <StatCard label="Offers" value={stats.offers} color="bg-emerald-500" />
         </div>
 
-        {/* Header + ViewToggle + Add button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Applications</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Applications</h2>
           <div className="flex items-center gap-3">
             <ViewToggle view={view} setView={setView} />
+            <button
+              onClick={() => exportApplicationsToCSV(applications)}
+              className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
+              title="Export to CSV"
+            >
+              <Download size={18} /> Export
+            </button>
             <button
               onClick={openCreate}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
@@ -159,17 +184,17 @@ export default function Dashboard() {
         )}
 
         {isLoading && (
-          <p className="text-center text-slate-500 py-12">Loading...</p>
+          <p className="text-center text-slate-500 dark:text-slate-400 py-12">Loading...</p>
         )}
         {error && (
-          <p className="text-center text-red-600 py-12">
+          <p className="text-center text-red-600 dark:text-red-400 py-12">
             Failed to load applications.
           </p>
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
-            <p className="text-slate-500 text-lg">
+          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <p className="text-slate-500 dark:text-slate-400 text-lg">
               {applications.length === 0
                 ? "No applications yet. Click 'New Application' to add your first!"
                 : 'No applications match your filters.'}
@@ -215,12 +240,12 @@ export default function Dashboard() {
 
 function StatCard({ label, value, color }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
       <div className="flex items-center gap-3">
         <div className={`w-2 h-12 rounded-full ${color}`} />
         <div>
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
-          <p className="text-sm text-slate-600">{label}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{value}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
         </div>
       </div>
     </div>

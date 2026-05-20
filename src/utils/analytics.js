@@ -81,3 +81,15 @@ export function getAvgDaysApplied(applications) {
   }, 0);
   return Math.round(totalDays / withDates.length);
 }
+export function getStaleApplications(applications, daysThreshold = 14) {
+  const now = Date.now();
+  const thresholdMs = daysThreshold * 24 * 60 * 60 * 1000;
+
+  return applications.filter((app) => {
+    // Only consider "active in pipeline" statuses
+    if (!['SCREENING', 'INTERVIEW'].includes(app.status)) return false;
+    if (!app.updatedAt) return false;
+    const updatedTime = new Date(app.updatedAt).getTime();
+    return now - updatedTime > thresholdMs;
+  });
+}
