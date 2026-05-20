@@ -10,6 +10,8 @@ import {
 import ApplicationCard from '../components/ApplicationCard';
 import ApplicationFormModal from '../components/ApplicationFormModal';
 import ApplicationFilters from '../components/ApplicationFilters';
+import KanbanBoard from '../components/KanbanBoard';
+import ViewToggle from '../components/ViewToggle';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -22,7 +24,7 @@ export default function Dashboard() {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-
+  const [view, setView] = useState('list');
   const filtered = useMemo(() => {
     return applications.filter((app) => {
       const matchesSearch =
@@ -58,6 +60,20 @@ export default function Dashboard() {
       deleteMutation.mutate(app.id);
     }
   };
+  const handleStatusUpdate = async (application, newStatus) => {
+  await updateMutation.mutateAsync({
+    id: application.id,
+    data: {
+      company: application.company,
+      role: application.role,
+      location: application.location,
+      jobUrl: application.jobUrl,
+      notes: application.notes,
+      appliedDate: application.appliedDate,
+      status: newStatus,
+    },
+  });
+};
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -87,24 +103,28 @@ export default function Dashboard() {
           <StatCard label="Offers" value={stats.offers} color="bg-emerald-500" />
         </div>
 
-        {/* Header + Add button */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Applications</h2>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
-          >
-            <Plus size={18} /> New Application
-          </button>
-        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+  <h2 className="text-2xl font-bold text-slate-900">Applications</h2>
+  <div className="flex items-center gap-3">
+    <ViewToggle view={view} setView={setView} />
+    <button
+      onClick={openCreate}
+      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+    >
+      <Plus size={18} /> New Application
+    </button>
+  </div>
+</div>
 
         {/* Filters */}
-        <ApplicationFilters
-          search={search}
-          setSearch={setSearch}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-        />
+        {view === 'list' && (
+  <ApplicationFilters
+    search={search}
+    setSearch={setSearch}
+    statusFilter={statusFilter}
+    setStatusFilter={setStatusFilter}
+  />
+)}
 
         {/* Body */}
         {isLoading && <p className="text-center text-slate-500 py-12">Loading...</p>}
@@ -120,16 +140,25 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((app) => (
-            <ApplicationCard
-              key={app.id}
-              application={app}
-              onEdit={openEdit}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        {view === 'list' ? (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {filtered.map((app) => (
+      <ApplicationCard
+        key={app.id}
+        application={app}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+      />
+    ))}
+  </div>
+) : (
+  <KanbanBoard
+    applications={filtered}
+    onUpdateStatus={handleStatusUpdate}
+    onEdit={openEdit}
+    onDelete={handleDelete}
+  />
+)}
       </main>
 
       <ApplicationFormModal

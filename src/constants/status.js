@@ -19,3 +19,10 @@ export const STATUS_COLORS = {
   GHOSTED:   'bg-slate-200 text-slate-700',
   DECLINED:  'bg-orange-100 text-orange-800',
 };
+// Subset shown in the Kanban view (active pipeline only)
+export const KANBAN_STATUSES = [
+  'APPLIED',
+  'SCREENING',
+  'INTERVIEW',
+  'OFFER',
+];
