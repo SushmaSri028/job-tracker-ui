@@ -17,6 +17,9 @@ import ThemeToggle from '../components/ThemeToggle';
 import StaleAlert from '../components/StaleAlert';
 import { exportApplicationsToCSV } from '../utils/csvExport';
 import { getStaleApplications } from '../utils/analytics';
+import toast from 'react-hot-toast';
+import SkeletonCard from '../components/SkeletonCard';
+import EmptyState from '../components/EmptyState';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -71,21 +74,31 @@ export default function Dashboard() {
   };
 
   const handleSubmit = async (formData) => {
+  try {
     if (editing) {
       await updateMutation.mutateAsync({ id: editing.id, data: formData });
+      toast.success('Application updated');
     } else {
       await createMutation.mutateAsync(formData);
+      toast.success('Application created');
     }
     setModalOpen(false);
-  };
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Something went wrong');
+  }
+};
 
   const handleDelete = (app) => {
-    if (confirm(`Delete application for ${app.company}?`)) {
-      deleteMutation.mutate(app.id);
-    }
-  };
+  if (confirm(`Delete application for ${app.company}?`)) {
+    deleteMutation.mutate(app.id, {
+      onSuccess: () => toast.success(`Deleted ${app.company}`),
+      onError: (err) => toast.error(err.response?.data?.message || 'Delete failed'),
+    });
+  }
+};
 
   const handleStatusUpdate = async (application, newStatus) => {
+  try {
     await updateMutation.mutateAsync({
       id: application.id,
       data: {
@@ -98,7 +111,11 @@ export default function Dashboard() {
         status: newStatus,
       },
     });
-  };
+    toast.success(`Moved ${application.company} to ${newStatus}`);
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Status update failed');
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -184,8 +201,12 @@ export default function Dashboard() {
         )}
 
         {isLoading && (
-          <p className="text-center text-slate-500 dark:text-slate-400 py-12">Loading...</p>
-        )}
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {[1, 2, 3, 4, 5, 6].map((n) => (
+      <SkeletonCard key={n} />
+    ))}
+  </div>
+)}
         {error && (
           <p className="text-center text-red-600 dark:text-red-400 py-12">
             Failed to load applications.
@@ -193,14 +214,26 @@ export default function Dashboard() {
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-            <p className="text-slate-500 dark:text-slate-400 text-lg">
-              {applications.length === 0
-                ? "No applications yet. Click 'New Application' to add your first!"
-                : 'No applications match your filters.'}
-            </p>
-          </div>
-        )}
+  applications.length === 0 ? (
+    <EmptyState
+      title="No applications yet"
+      description="Add your first job application to start tracking your job hunt."
+      action={
+        <button
+          onClick={openCreate}
+          className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+        >
+          <Plus size={18} /> Add your first application
+        </button>
+      }
+    />
+  ) : (
+    <EmptyState
+      title="No matches"
+      description="No applications match your filters. Try adjusting the search or status filter."
+    />
+  )
+)}
 
         {!isLoading && filtered.length > 0 && (
           <>
