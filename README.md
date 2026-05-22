@@ -3,6 +3,15 @@
 React + Vite frontend for the Job Application Tracker. Paired with a Spring Boot backend.
 
 🔗 **Live demo:** https://job-tracker-ui.vercel.app
+## Screenshots
+
+![Dashboard - Light mode](./screenshots/dashboard-light.png)
+
+![Dashboard - Dark mode](./screenshots/dashboard-dark.png)
+
+![Kanban board with drag-and-drop](./screenshots/kanban.png)
+
+![Analytics with charts](./screenshots/analytics.png)
 📦 **Backend repo:** [SushmaSri028/job-application-tracker](https://github.com/SushmaSri028/job-application-tracker)
 
 ---
