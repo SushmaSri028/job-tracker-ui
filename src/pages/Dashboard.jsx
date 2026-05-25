@@ -1,28 +1,23 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, LogOut, Download } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Plus, Download, Inbox, TrendingUp, MessageSquare, Award } from 'lucide-react';
 import {
   useApplications,
   useCreateApplication,
   useUpdateApplication,
   useDeleteApplication,
 } from '../hooks/useApplications';
+import Sidebar from '../components/Sidebar';
+import MobileTopBar from '../components/MobileTopBar';
 import ApplicationCard from '../components/ApplicationCard';
 import ApplicationFormModal from '../components/ApplicationFormModal';
 import ApplicationFilters from '../components/ApplicationFilters';
 import KanbanBoard from '../components/KanbanBoard';
 import ViewToggle from '../components/ViewToggle';
-import ThemeToggle from '../components/ThemeToggle';
 import StaleAlert from '../components/StaleAlert';
 import { exportApplicationsToCSV } from '../utils/csvExport';
 import { getStaleApplications } from '../utils/analytics';
-import toast from 'react-hot-toast';
-import SkeletonCard from '../components/SkeletonCard';
-import EmptyState from '../components/EmptyState';
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
   const { data: applications = [], isLoading, error } = useApplications();
   const createMutation = useCreateApplication();
   const updateMutation = useUpdateApplication();
@@ -49,215 +44,174 @@ export default function Dashboard() {
   const stats = useMemo(
     () => ({
       total: applications.length,
+      active: applications.filter((a) => !['REJECTED', 'GHOSTED', 'DECLINED'].includes(a.status)).length,
       interviews: applications.filter((a) => a.status === 'INTERVIEW').length,
       offers: applications.filter((a) => ['OFFER', 'ACCEPTED'].includes(a.status)).length,
-      active: applications.filter(
-        (a) => !['REJECTED', 'GHOSTED', 'DECLINED'].includes(a.status)
-      ).length,
     }),
     [applications]
   );
 
-  const staleApplications = useMemo(
-    () => getStaleApplications(applications),
-    [applications]
-  );
+  const staleApplications = useMemo(() => getStaleApplications(applications), [applications]);
 
-  const openCreate = () => {
-    setEditing(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (app) => {
-    setEditing(app);
-    setModalOpen(true);
-  };
+  const openCreate = () => { setEditing(null); setModalOpen(true); };
+  const openEdit = (app) => { setEditing(app); setModalOpen(true); };
 
   const handleSubmit = async (formData) => {
-  try {
-    if (editing) {
-      await updateMutation.mutateAsync({ id: editing.id, data: formData });
-      toast.success('Application updated');
-    } else {
-      await createMutation.mutateAsync(formData);
-      toast.success('Application created');
+    try {
+      if (editing) {
+        await updateMutation.mutateAsync({ id: editing.id, data: formData });
+      } else {
+        await createMutation.mutateAsync(formData);
+      }
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
     }
-    setModalOpen(false);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Something went wrong');
-  }
-};
+  };
 
   const handleDelete = (app) => {
-  if (confirm(`Delete application for ${app.company}?`)) {
-    deleteMutation.mutate(app.id, {
-      onSuccess: () => toast.success(`Deleted ${app.company}`),
-      onError: (err) => toast.error(err.response?.data?.message || 'Delete failed'),
-    });
-  }
-};
+    if (confirm(`Delete application for ${app.company}?`)) {
+      deleteMutation.mutate(app.id);
+    }
+  };
 
   const handleStatusUpdate = async (application, newStatus) => {
-  try {
     await updateMutation.mutateAsync({
       id: application.id,
-      data: {
-        company: application.company,
-        role: application.role,
-        location: application.location,
-        jobUrl: application.jobUrl,
-        notes: application.notes,
-        appliedDate: application.appliedDate,
-        status: newStatus,
-      },
+      data: { ...application, status: newStatus, user: undefined },
     });
-    toast.success(`Moved ${application.company} to ${newStatus}`);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Status update failed');
-  }
-};
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Job Tracker</h1>
-            <div className="flex items-center gap-1">
-              <Link
-                to="/dashboard"
-                className="px-3 py-1.5 rounded-md text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+    <div className="min-h-screen bg-ink-50 dark:bg-ink-950">
+      <Sidebar />
+      <MobileTopBar />
+
+      <main className="lg:ml-64 px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
+        <div className="max-w-6xl mx-auto animate-fade-in">
+          {/* Page header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight text-ink-900 dark:text-white">
+              Dashboard
+            </h1>
+            <p className="text-sm text-ink-500 dark:text-ink-400 mt-1">
+              Track every application across the pipeline.
+            </p>
+          </div>
+
+          {/* Stale alert */}
+          {!staleAlertDismissed && (
+            <StaleAlert
+              staleApplications={staleApplications}
+              onDismiss={() => setStaleAlertDismissed(true)}
+            />
+          )}
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+            <StatCard icon={<Inbox size={18} />} label="Total" value={stats.total} accent="bg-accent-500" />
+            <StatCard icon={<TrendingUp size={18} />} label="Active" value={stats.active} accent="bg-purple-500" />
+            <StatCard icon={<MessageSquare size={18} />} label="Interviews" value={stats.interviews} accent="bg-amber-500" />
+            <StatCard icon={<Award size={18} />} label="Offers" value={stats.offers} accent="bg-emerald-500" />
+          </div>
+
+          {/* Section header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <h2 className="text-xl font-semibold tracking-tight text-ink-900 dark:text-white">
+              Applications
+            </h2>
+            <div className="flex items-center gap-2">
+              <ViewToggle view={view} setView={setView} />
+              <button
+                onClick={() => exportApplicationsToCSV(applications)}
+                className="btn-secondary"
+                title="Export to CSV"
               >
-                Dashboard
-              </Link>
-              <Link
-                to="/analytics"
-                className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                Analytics
-              </Link>
+                <Download size={16} /> Export
+              </button>
+              <button onClick={openCreate} className="btn-primary">
+                <Plus size={16} /> New
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <span className="text-sm text-slate-600 dark:text-slate-300">
-              Hi,{' '}
-              <span className="font-medium text-slate-900 dark:text-slate-100">
-                {user?.fullName}
-              </span>
-            </span>
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-            >
-              <LogOut size={16} /> Log out
-            </button>
-          </div>
-        </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {!staleAlertDismissed && (
-          <StaleAlert
-            staleApplications={staleApplications}
-            onDismiss={() => setStaleAlertDismissed(true)}
-          />
-        )}
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total" value={stats.total} color="bg-blue-500" />
-          <StatCard label="Active" value={stats.active} color="bg-purple-500" />
-          <StatCard label="Interviews" value={stats.interviews} color="bg-yellow-500" />
-          <StatCard label="Offers" value={stats.offers} color="bg-emerald-500" />
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Applications</h2>
-          <div className="flex items-center gap-3">
-            <ViewToggle view={view} setView={setView} />
-            <button
-              onClick={() => exportApplicationsToCSV(applications)}
-              className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
-              title="Export to CSV"
-            >
-              <Download size={18} /> Export
-            </button>
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
-            >
-              <Plus size={18} /> New Application
-            </button>
-          </div>
-        </div>
-
-        {view === 'list' && (
-          <ApplicationFilters
-            search={search}
-            setSearch={setSearch}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-          />
-        )}
-
-        {isLoading && (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {[1, 2, 3, 4, 5, 6].map((n) => (
-      <SkeletonCard key={n} />
-    ))}
-  </div>
-)}
-        {error && (
-          <p className="text-center text-red-600 dark:text-red-400 py-12">
-            Failed to load applications.
-          </p>
-        )}
-
-        {!isLoading && filtered.length === 0 && (
-  applications.length === 0 ? (
-    <EmptyState
-      title="No applications yet"
-      description="Add your first job application to start tracking your job hunt."
-      action={
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
-        >
-          <Plus size={18} /> Add your first application
-        </button>
-      }
-    />
-  ) : (
-    <EmptyState
-      title="No matches"
-      description="No applications match your filters. Try adjusting the search or status filter."
-    />
-  )
-)}
-
-        {!isLoading && filtered.length > 0 && (
-          <>
-            {view === 'list' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtered.map((app) => (
-                  <ApplicationCard
-                    key={app.id}
-                    application={app}
-                    onEdit={openEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            ) : (
-              <KanbanBoard
-                applications={filtered}
-                onUpdateStatus={handleStatusUpdate}
-                onEdit={openEdit}
-                onDelete={handleDelete}
+          {/* Filters in list view */}
+          {view === 'list' && (
+            <div className="mb-5">
+              <ApplicationFilters
+                search={search}
+                setSearch={setSearch}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
               />
-            )}
-          </>
-        )}
+            </div>
+          )}
+
+          {/* States */}
+          {isLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div key={n} className="card p-5 h-44 animate-pulse">
+                  <div className="h-4 bg-ink-100 dark:bg-ink-800 rounded w-1/2 mb-2" />
+                  <div className="h-3 bg-ink-100 dark:bg-ink-800 rounded w-2/3 mb-4" />
+                  <div className="h-12 bg-ink-50 dark:bg-ink-900 rounded" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <div className="card p-12 text-center">
+              <p className="text-red-600 dark:text-red-400">Failed to load applications.</p>
+            </div>
+          )}
+
+          {!isLoading && filtered.length === 0 && (
+            <div className="card p-16 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 bg-ink-100 dark:bg-ink-800 rounded-2xl flex items-center justify-center">
+                <Inbox className="text-ink-400" size={20} />
+              </div>
+              <h3 className="text-base font-medium text-ink-900 dark:text-white mb-1">
+                {applications.length === 0 ? 'No applications yet' : 'Nothing matches'}
+              </h3>
+              <p className="text-sm text-ink-500 dark:text-ink-400 mb-5">
+                {applications.length === 0
+                  ? 'Add your first job application to get started.'
+                  : 'Try adjusting your search or filter.'}
+              </p>
+              {applications.length === 0 && (
+                <button onClick={openCreate} className="btn-primary">
+                  <Plus size={16} /> Add your first
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Body */}
+          {!isLoading && filtered.length > 0 && (
+            <>
+              {view === 'list' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filtered.map((app) => (
+                    <ApplicationCard
+                      key={app.id}
+                      application={app}
+                      onEdit={openEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <KanbanBoard
+                  applications={filtered}
+                  onUpdateStatus={handleStatusUpdate}
+                  onEdit={openEdit}
+                  onDelete={handleDelete}
+                />
+              )}
+            </>
+          )}
+        </div>
       </main>
 
       <ApplicationFormModal
@@ -271,16 +225,21 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ label, value, color }) {
+function StatCard({ icon, label, value, accent }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-      <div className="flex items-center gap-3">
-        <div className={`w-2 h-12 rounded-full ${color}`} />
-        <div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{value}</p>
-          <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+    <div className="card p-4 hover:shadow-soft transition-shadow">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`w-7 h-7 rounded-lg ${accent} bg-opacity-10 dark:bg-opacity-20 flex items-center justify-center text-white`}>
+          <div className={`absolute w-7 h-7 rounded-lg ${accent} opacity-15`}></div>
+          <div className="relative">{icon}</div>
         </div>
+        <span className="text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide">
+          {label}
+        </span>
       </div>
+      <p className="text-3xl font-bold tracking-tight text-ink-900 dark:text-white tabular-nums">
+        {value}
+      </p>
     </div>
   );
 }

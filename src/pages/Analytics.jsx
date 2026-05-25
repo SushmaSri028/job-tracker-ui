@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, TrendingUp, Target, Clock, Inbox } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { TrendingUp, Target, Clock, Inbox } from 'lucide-react';
 import { useApplications } from '../hooks/useApplications';
+import Sidebar from '../components/Sidebar';
+import MobileTopBar from '../components/MobileTopBar';
 import StatusPieChart from '../components/charts/StatusPieChart';
 import ApplicationsTimeline from '../components/charts/ApplicationsTimeline';
 import TopCompaniesChart from '../components/charts/TopCompaniesChart';
@@ -14,10 +14,8 @@ import {
   getOfferRate,
   getAvgDaysApplied,
 } from '../utils/analytics';
-import ThemeToggle from '../components/ThemeToggle';
 
 export default function Analytics() {
-  const { user, logout } = useAuth();
   const { data: applications = [], isLoading } = useApplications();
 
   const data = useMemo(() => ({
@@ -30,131 +28,80 @@ export default function Analytics() {
   }), [applications]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-slate-900">Job Tracker</h1>
-            <div className="flex items-center gap-1">
-              <Link
-                to="/dashboard"
-                className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100"
-              >
-                Dashboard
-              </Link>
-              <Link
-                to="/analytics"
-                className="px-3 py-1.5 rounded-md text-sm font-medium bg-slate-100 text-slate-900"
-              >
-                Analytics
-              </Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-  <ThemeToggle />
-  <span className="text-sm text-slate-600 dark:text-slate-300">
-    Hi,{' '}
-    <span className="font-medium text-slate-900 dark:text-slate-100">{user?.fullName}</span>
-  </span>
-  <button
-    onClick={logout}
-    className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-  >
-    <LogOut size={16} /> Log out
-  </button>
-</div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-ink-50 dark:bg-ink-950">
+      <Sidebar />
+      <MobileTopBar />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="mb-8">
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 mb-3"
-          >
-            <ArrowLeft size={14} /> Back to dashboard
-          </Link>
-          <h2 className="text-3xl font-bold text-slate-900">Analytics</h2>
-          <p className="text-slate-600 mt-1">
-            Insights from {applications.length} application{applications.length === 1 ? '' : 's'}
-          </p>
-        </div>
-
-        {isLoading ? (
-          <p className="text-center text-slate-500 py-12">Loading...</p>
-        ) : applications.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center">
-            <p className="text-slate-500 text-lg mb-2">No data yet.</p>
-            <p className="text-slate-400 text-sm">
-              Add a few applications first to see analytics.
+      <main className="lg:ml-64 px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
+        <div className="max-w-6xl mx-auto animate-fade-in">
+          {/* Page header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight text-ink-900 dark:text-white">
+              Analytics
+            </h1>
+            <p className="text-sm text-ink-500 dark:text-ink-400 mt-1">
+              Insights across {applications.length} application{applications.length === 1 ? '' : 's'}.
             </p>
           </div>
-        ) : (
-          <>
-            {/* KPI cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <KpiCard
-                icon={<Inbox size={20} />}
-                label="Total applications"
-                value={applications.length}
-                color="bg-blue-50 text-blue-700"
-              />
-              <KpiCard
-                icon={<TrendingUp size={20} />}
-                label="Response rate"
-                value={`${data.responseRate}%`}
-                color="bg-emerald-50 text-emerald-700"
-              />
-              <KpiCard
-                icon={<Target size={20} />}
-                label="Offer rate"
-                value={`${data.offerRate}%`}
-                color="bg-purple-50 text-purple-700"
-              />
-              <KpiCard
-                icon={<Clock size={20} />}
-                label="Avg. days since applied"
-                value={data.avgDays}
-                color="bg-yellow-50 text-yellow-700"
-              />
-            </div>
 
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <ChartCard title="Status breakdown">
-                <StatusPieChart data={data.status} />
-              </ChartCard>
-              <ChartCard title="Top companies">
-                <TopCompaniesChart data={data.companies} />
-              </ChartCard>
+          {isLoading ? (
+            <div className="card p-16 text-center text-ink-500">Loading...</div>
+          ) : applications.length === 0 ? (
+            <div className="card p-16 text-center">
+              <p className="text-ink-500 dark:text-ink-400 mb-2">No data yet.</p>
+              <p className="text-sm text-ink-400">Add applications to see your analytics.</p>
             </div>
+          ) : (
+            <>
+              {/* KPIs */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <KpiCard icon={<Inbox size={18} />} label="Total" value={applications.length} accent="text-accent-600" />
+                <KpiCard icon={<TrendingUp size={18} />} label="Response rate" value={`${data.responseRate}%`} accent="text-emerald-600" />
+                <KpiCard icon={<Target size={18} />} label="Offer rate" value={`${data.offerRate}%`} accent="text-purple-600" />
+                <KpiCard icon={<Clock size={18} />} label="Avg. days" value={data.avgDays} accent="text-amber-600" />
+              </div>
 
-            <ChartCard title="Applications per week (last 12 weeks)">
-              <ApplicationsTimeline data={data.timeline} />
-            </ChartCard>
-          </>
-        )}
+              {/* Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <ChartCard title="Status breakdown">
+                  <StatusPieChart data={data.status} />
+                </ChartCard>
+                <ChartCard title="Top companies">
+                  <TopCompaniesChart data={data.companies} />
+                </ChartCard>
+              </div>
+
+              <ChartCard title="Applications per week (last 12 weeks)">
+                <ApplicationsTimeline data={data.timeline} />
+              </ChartCard>
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
 }
 
-function KpiCard({ icon, label, value, color }) {
+function KpiCard({ icon, label, value, accent }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5">
-      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${color} mb-3`}>
+    <div className="card p-4">
+      <div className={`flex items-center gap-2.5 mb-3 ${accent}`}>
         {icon}
+        <span className="text-xs font-medium text-ink-500 dark:text-ink-400 uppercase tracking-wide">
+          {label}
+        </span>
       </div>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      <p className="text-sm text-slate-600 mt-1">{label}</p>
+      <p className="text-3xl font-bold tracking-tight text-ink-900 dark:text-white tabular-nums">
+        {value}
+      </p>
     </div>
   );
 }
 
 function ChartCard({ title, children }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6">
-      <h3 className="text-base font-semibold text-slate-900 mb-4">{title}</h3>
+    <div className="card p-6">
+      <h3 className="text-sm font-semibold text-ink-900 dark:text-white mb-4">{title}</h3>
       {children}
     </div>
   );
